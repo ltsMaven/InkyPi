@@ -1,49 +1,52 @@
 #!/usr/bin/env python3
 
 # set up logging
-import os, logging.config
-logging.config.fileConfig(os.path.join(os.path.dirname(__file__), 'config', 'logging.conf'))
+from hw.gpio_inputs import GpioInputManager
+from waitress import serve
+from plugins.plugin_registry import load_plugins
+from jinja2 import ChoiceLoader, FileSystemLoader
+from blueprints.playlist import playlist_bp
+from blueprints.plugin import plugin_bp
+from blueprints.settings import settings_bp
+from blueprints.main import main_bp
+from refresh_task import RefreshTask
+from display.display_manager import DisplayManager
+from config import Config
+import display.display_manager as dm
+import inspect
+from werkzeug.serving import is_running_from_reloader
+from flask import Flask, request
+from utils.app_utils import generate_startup_image
+import argparse
+import threading
+import logging
+import json
+import sys
+import time
+import random
+import os
+import warnings
+import os
+import logging.config
+logging.config.fileConfig(os.path.join(
+    os.path.dirname(__file__), 'config', 'logging.conf'))
 
 # suppress warning from inky library https://github.com/pimoroni/inky/issues/205
-import warnings
 warnings.filterwarnings("ignore", message=".*Busy Wait: Held high.*")
-
-import os
-import random
-import time
-import sys
-import json
-import logging
-import threading
-import argparse
-from utils.app_utils import generate_startup_image
-from flask import Flask, request
-from werkzeug.serving import is_running_from_reloader
-from config import Config
-from display.display_manager import DisplayManager
-from refresh_task import RefreshTask
-from blueprints.main import main_bp
-from blueprints.settings import settings_bp
-from blueprints.plugin import plugin_bp
-from blueprints.playlist import playlist_bp
-from jinja2 import ChoiceLoader, FileSystemLoader
-from plugins.plugin_registry import load_plugins
-from waitress import serve
-from hw.gpio_inputs import GpioInputManager
-
-
 
 
 logger = logging.getLogger(__name__)
 
 # Parse command line arguments
 parser = argparse.ArgumentParser(description='InkyPi Display Server')
-parser.add_argument('--dev', action='store_true', help='Run in development mode')
+parser.add_argument('--dev', action='store_true',
+                    help='Run in development mode')
 args = parser.parse_args()
 
 # Set development mode settings
 if args.dev:
-    Config.config_file = os.path.join(Config.BASE_DIR, "config", "device_dev.json")
+    Config.config_file = os.path.join(
+        Config.BASE_DIR, "config", "device_dev.json")
     DEV_MODE = True
     PORT = 8080
     logger.info("Starting InkyPi in DEVELOPMENT mode on port 8080")
@@ -54,13 +57,19 @@ else:
 logging.getLogger('waitress.queue').setLevel(logging.ERROR)
 app = Flask(__name__)
 template_dirs = [
-   os.path.join(os.path.dirname(__file__), "templates"),    # Default template folder
-   os.path.join(os.path.dirname(__file__), "plugins"),      # Plugin templates
+    # Default template folder
+    os.path.join(os.path.dirname(__file__), "templates"),
+    os.path.join(os.path.dirname(__file__), "plugins"),      # Plugin templates
 ]
-app.jinja_loader = ChoiceLoader([FileSystemLoader(directory) for directory in template_dirs])
+app.jinja_loader = ChoiceLoader(
+    [FileSystemLoader(directory) for directory in template_dirs])
 
 device_config = Config()
 display_manager = DisplayManager(device_config)
+logger.info("DisplayManager module file: %s", dm.__file__)
+logger.info("Has display_image? %s", hasattr(display_manager, "display_image"))
+logger.info("DisplayManager methods: %s",
+            [m for m in dir(display_manager) if m.startswith("display")])
 refresh_task = RefreshTask(device_config, display_manager)
 
 load_plugins(device_config.get_plugins())
@@ -87,7 +96,8 @@ app.register_blueprint(playlist_bp)
 if __name__ == '__main__':
 
     try:
-        gpio_mgr = GpioInputManager(display_manager, device_config, CURRENT_IMAGE_PATH)
+        gpio_mgr = GpioInputManager(
+            display_manager, device_config, CURRENT_IMAGE_PATH)
         gpio_mgr.start()
         logger.info("GPIO input manager started")
     except Exception as e:
@@ -105,8 +115,8 @@ if __name__ == '__main__':
 
     try:
         # Run the Flask app
-        app.secret_key = str(random.randint(100000,999999))
-        
+        app.secret_key = str(random.randint(100000, 999999))
+
         # Get local IP address for display (only in dev mode when running on non-Pi)
         if DEV_MODE:
             import socket
@@ -118,7 +128,7 @@ if __name__ == '__main__':
                 logger.info(f"Serving on http://{local_ip}:{PORT}")
             except:
                 pass  # Ignore if we can't get the IP
-            
+
         serve(app, host="0.0.0.0", port=PORT, threads=1)
     finally:
         refresh_task.stop()
