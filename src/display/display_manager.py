@@ -1,5 +1,4 @@
 import fnmatch
-import json
 import logging
 
 from utils.image_utils import resize_image, change_orientation, apply_image_enhancement
@@ -20,22 +19,11 @@ except ImportError:
 
 
 class DisplayManager:
-
     """Manages the display and rendering of images."""
 
-    def __init__(self, device_config):
-        """
-        Initializes the display manager and selects the correct display type
-        based on the configuration.
-
-        Args:
-            device_config (object): Configuration object containing display settings.
-
-        Raises:
-            ValueError: If an unsupported display type is specified.
-        """
-
+    def __init__(self, device_config, epd_display):
         self.device_config = device_config
+        self.display = epd_display
 
         display_type = device_config.get_config("display_type", default="inky")
 
@@ -44,44 +32,57 @@ class DisplayManager:
         elif display_type == "inky":
             self.display = InkyDisplay(device_config)
         elif fnmatch.fnmatch(display_type, "epd*in*"):
-            # derived from waveshare epd - we assume here that will be consistent
-            # otherwise we will have to enshring the manufacturer in the
-            # display_type and then have a display_model parameter.  Will leave
-            # that for future use if the need arises.
-            #
-            # see https://github.com/waveshareteam/e-Paper
+            # Waveshare e-paper family
             self.display = WaveshareDisplay(device_config)
         else:
             raise ValueError(f"Unsupported display type: {display_type}")
 
+    def display_image(self, image, image_settings=None):
+        # Resolve settings with safe fallbacks
+        settings = (
+            image_settings
+            if isinstance(image_settings, dict)
+            else (self.device_config.get_config("image_settings", {}) or {})
+        )
 
-def display_image(self, image, image_settings=None):
-    settings = (
-        image_settings
-        if image_settings is not None
-        else self.device_config.get_config("image_settings", {})
-    )
-    if not isinstance(settings, dict):
-        settings = {}
+        # Orientation (optional)
+        orientation = self.device_config.get_config("orientation", None)
+        if orientation:
+            image = change_orientation(image, orientation)
 
-    # Enhance image
-    image = apply_image_enhancement(image, settings)
+        # Resize to panel
+        image = resize_image(image, self.device_config.get_resolution())
 
-    if not hasattr(self, "display"):
-        raise ValueError("No valid display instance initialized.")
+        # Invert/rotate 180 if configured
+        if self.device_config.get_config("inverted_image", False):
+            image = image.rotate(180)
 
-    # Save the image
-    logger.info("Saving image to %s", self.device_config.current_image_file)
-    image.save(self.device_config.current_image_file)
+        # Enhance AFTER resize so sharpening/contrast apply to final size
+        image = apply_image_enhancement(image, settings)
 
-    image = change_orientation(
-        image, self.device_config.get_config("orientation"))
-    image = resize_image(
-        image, self.device_config.get_resolution(), image_settings)
-    if self.device_config.get_config("inverted_image"):
-        image = image.rotate(180)
-    image = apply_image_enhancement(
-        image, self.device_config.get_config("image_settings"))
+        # Ensure display exists
+        if not hasattr(self, "display"):
+            raise ValueError("No valid display instance initialized.")
 
-    # Pass to the concrete instance to render to the device.
-    self.display.display_image(image, image_settings)
+        # Save last-shown image (for restore on wake)
+        logger.info("Saving image to %s",
+                    self.device_config.current_image_file)
+        image.save(self.device_config.current_image_file)
+
+        # Hand off to the concrete driver; support a few common APIs
+        try:
+            if hasattr(self.display, "display_image"):
+                self.display.display_image(image, settings)
+            elif hasattr(self.display, "display"):
+                self.display.display(image)
+            elif hasattr(self.display, "draw"):
+                self.display.draw(image)
+                if hasattr(self.display, "refresh"):
+                    self.display.refresh()
+            else:
+                raise AttributeError(
+                    "Display driver exposes no known draw method")
+        except Exception as e:
+            logger.exception("Failed to push image to display: %s", e)
+
+        return image
