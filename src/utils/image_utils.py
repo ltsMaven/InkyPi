@@ -9,14 +9,17 @@ import subprocess
 
 logger = logging.getLogger(__name__)
 
+
 def get_image(image_url):
     response = requests.get(image_url)
     img = None
     if 200 <= response.status_code < 300 or response.status_code == 304:
         img = Image.open(BytesIO(response.content))
     else:
-        logger.error(f"Received non-200 response from {image_url}: status_code: {response.status_code}")
+        logger.error(
+            f"Received non-200 response from {image_url}: status_code: {response.status_code}")
     return img
+
 
 def change_orientation(image, orientation, inverted=False):
     if orientation == 'horizontal':
@@ -29,6 +32,7 @@ def change_orientation(image, orientation, inverted=False):
 
     return image.rotate(angle, expand=1)
 
+
 def resize_image(image, desired_size, image_settings=[]):
     img_width, img_height = image.size
     desired_width, desired_height = desired_size
@@ -39,8 +43,8 @@ def resize_image(image, desired_size, image_settings=[]):
 
     keep_width = "keep-width" in image_settings
 
-    x_offset, y_offset = 0,0
-    new_width, new_height = img_width,img_height
+    x_offset, y_offset = 0, 0
+    new_width, new_height = img_width, img_height
     # Step 1: Determine crop dimensions
     desired_ratio = desired_width / desired_height
     if img_ratio > desired_ratio:
@@ -55,24 +59,27 @@ def resize_image(image, desired_size, image_settings=[]):
             y_offset = (img_height - new_height) // 2
 
     # Step 2: Crop the image
-    image = image.crop((x_offset, y_offset, x_offset + new_width, y_offset + new_height))
+    image = image.crop((x_offset, y_offset, x_offset +
+                       new_width, y_offset + new_height))
 
     # Step 3: Resize to the exact desired dimensions (if necessary)
     return image.resize((desired_width, desired_height), Image.LANCZOS)
 
-def apply_image_enhancement(img, image_settings={}):
+
+def apply_image_enhancement(img, image_settings=None):
+    s = image_settings or {}
 
     # Apply Brightness
-    img = ImageEnhance.Brightness(img).enhance(image_settings.get("brightness", 1.0))
+    img = ImageEnhance.Brightness(img).enhance(s.get("brightness", 1.0))
 
     # Apply Contrast
-    img = ImageEnhance.Contrast(img).enhance(image_settings.get("contrast", 1.0))
+    img = ImageEnhance.Contrast(img).enhance(s.get("contrast", 1.0))
 
     # Apply Saturation (Color)
-    img = ImageEnhance.Color(img).enhance(image_settings.get("saturation", 1.0))
+    img = ImageEnhance.Color(img).enhance(s.get("saturation", 1.0))
 
     # Apply Sharpness
-    img = ImageEnhance.Sharpness(img).enhance(image_settings.get("sharpness", 1.0))
+    img = ImageEnhance.Sharpness(img).enhance(s.get("sharpness", 1.0))
 
     return img
 

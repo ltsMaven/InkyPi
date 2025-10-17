@@ -59,10 +59,8 @@ class GpioInputManager(threading.Thread):
         return Image.new('1', (w, h), 0)
 
     def _display(self, pil_image):
-        # Centralize image_settings usage so all call sites are consistent
-        image_settings = self.device_config.get_config("image_settings", [])
-        self.display_manager.display_image(
-            pil_image, image_settings=image_settings)
+        # Let display_manager handle image_settings fallback
+        self.display_manager.display_image(pil_image)
 
     def _restore_previous_image(self):
         if os.path.isfile(self.current_image_path):
