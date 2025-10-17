@@ -29,6 +29,9 @@ from blueprints.playlist import playlist_bp
 from jinja2 import ChoiceLoader, FileSystemLoader
 from plugins.plugin_registry import load_plugins
 from waitress import serve
+from hw.gpio_inputs import GpioInputManager
+
+
 
 
 logger = logging.getLogger(__name__)
@@ -67,6 +70,11 @@ app.config['DEVICE_CONFIG'] = device_config
 app.config['DISPLAY_MANAGER'] = display_manager
 app.config['REFRESH_TASK'] = refresh_task
 
+# Path of the last rendered image (used by GpioInputManager to restore screen)
+CURRENT_IMAGE_PATH = os.path.join(
+    os.path.dirname(__file__), "static", "images", "current_image.png"
+)
+
 # Set additional parameters
 app.config['MAX_FORM_PARTS'] = 10_000
 
@@ -77,6 +85,13 @@ app.register_blueprint(plugin_bp)
 app.register_blueprint(playlist_bp)
 
 if __name__ == '__main__':
+
+    try:
+        gpio_mgr = GpioInputManager(display_manager, device_config, CURRENT_IMAGE_PATH)
+        gpio_mgr.start()
+        logger.info("GPIO input manager started")
+    except Exception as e:
+        logger.exception("Failed to start GPIO input manager: %s", e)
 
     # start the background refresh task
     refresh_task.start()
