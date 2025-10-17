@@ -32,8 +32,8 @@ class GpioInputManager(threading.Thread):
         self.pir = MotionSensor(16)
 
         # Bind events (press -> sleep/black, release -> wake/restore)
-        self.button.when_pressed = self._on_button_pressed
-        self.button.when_released = self._on_button_released
+        self.button.when_pressed = self._toggle_power
+        self.button.when_released = None
         self.pir.when_motion = self._on_motion
 
     # --- Helpers ---
@@ -53,14 +53,33 @@ class GpioInputManager(threading.Thread):
             w, h = get_dims()
         return int(w), int(h)
 
+    def _toggle_power(self):
+        if self._is_asleep:
+            self.logger.info("Button: WAKE + restore last image")
+            try:
+                self.display_manager.wake()
+            except Exception:
+                pass
+            self._restore_previous_image()  # will save_to_cache=True via DisplayManager
+            self._is_asleep = False
+        else:
+            self.logger.info("Button: SLEEP (black, no cache write)")
+            # draw black but DO NOT overwrite current_image.png
+            self._display(self._black_image(), save_to_cache=False)
+            try:
+                self.display_manager.sleep()
+            except Exception:
+                pass
+            self._is_asleep = True
+
     def _black_image(self):
         w, h = self._panel_size()
-        # '1' mode: 0=black, 1=white
-        return Image.new('1', (w, h), 0)
+        return Image.new("RGB", (w, h), "black")
 
     def _display(self, pil_image):
         # Let display_manager handle image_settings fallback
-        self.display_manager.display_image(pil_image)
+        self.display_manager.display_image(
+            pil_image, save_to_cache=save_to_cache)
 
     def _restore_previous_image(self):
         self.logger.info("Restoring from %s (exists=%s, size=%s bytes)",
