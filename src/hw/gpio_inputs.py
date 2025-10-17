@@ -5,6 +5,7 @@ import time
 import logging
 from PIL import Image
 from gpiozero import Button, MotionSensor
+import inspect
 
 logger = logging.getLogger(__name__)
 
@@ -66,6 +67,8 @@ class GpioInputManager(threading.Thread):
             self.logger.info("Button: SLEEP (black, no cache write)")
             self._display(self._black_image(),
                           save_to_cache=False)  # <-- now valid
+            
+            self.logger.info("Gpio._display sig: %s", inspect.signature(self._display))
             try:
                 self.display_manager.sleep()
             except Exception:
@@ -76,10 +79,10 @@ class GpioInputManager(threading.Thread):
         w, h = self._panel_size()
         return Image.new("RGB", (w, h), "black")
 
-
     def _display(self, pil_image, save_to_cache=True):
         # Forward the flag to DisplayManager
-        self.display_manager.display_image(pil_image, save_to_cache=save_to_cache)
+        self.display_manager.display_image(
+            pil_image, save_to_cache=save_to_cache)
 
     def _restore_previous_image(self):
         self.logger.info("Restoring from %s (exists=%s, size=%s bytes)",
