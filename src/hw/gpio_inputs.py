@@ -60,12 +60,12 @@ class GpioInputManager(threading.Thread):
                 self.display_manager.wake()
             except Exception:
                 pass
-            self._restore_previous_image()  # will save_to_cache=True via DisplayManager
+            self._restore_previous_image()  # defaults to save_to_cache=True
             self._is_asleep = False
         else:
             self.logger.info("Button: SLEEP (black, no cache write)")
-            # draw black but DO NOT overwrite current_image.png
-            self._display(self._black_image(), save_to_cache=False)
+            self._display(self._black_image(),
+                          save_to_cache=False)  # <-- now valid
             try:
                 self.display_manager.sleep()
             except Exception:
@@ -76,10 +76,10 @@ class GpioInputManager(threading.Thread):
         w, h = self._panel_size()
         return Image.new("RGB", (w, h), "black")
 
-    def _display(self, pil_image):
-        # Let display_manager handle image_settings fallback
-        self.display_manager.display_image(
-            pil_image, save_to_cache=save_to_cache)
+
+    def _display(self, pil_image, save_to_cache=True):
+        # Forward the flag to DisplayManager
+        self.display_manager.display_image(pil_image, save_to_cache=save_to_cache)
 
     def _restore_previous_image(self):
         self.logger.info("Restoring from %s (exists=%s, size=%s bytes)",
