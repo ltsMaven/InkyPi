@@ -67,6 +67,8 @@ app.jinja_loader = ChoiceLoader(
 device_config = Config()
 display_manager = DisplayManager(device_config)
 logger.info("DisplayManager module file: %s", dm.__file__)
+logger.info("DM.display_image sig: %s",
+            inspect.signature(display_manager.display_image))
 logger.info("Has display_image? %s", hasattr(display_manager, "display_image"))
 logger.info("DisplayManager methods: %s",
             [m for m in dir(display_manager) if m.startswith("display")])
