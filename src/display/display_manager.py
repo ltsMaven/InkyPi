@@ -42,15 +42,12 @@ class DisplayManager:
             else:
                 raise ValueError(f"Unsupported display type: {display_type}")
 
-    def display_image(self, image, image_settings=None):
-        # Resolve settings with safe fallbacks
+    def display_image(self, image, image_settings=None, save_to_cache=True):
         settings = (
-            image_settings
-            if isinstance(image_settings, dict)
+            image_settings if isinstance(image_settings, dict)
             else (self.device_config.get_config("image_settings", {}) or {})
         )
 
-        # Orientation → resize → optional 180° rotate → enhance
         orientation = self.device_config.get_config("orientation", None)
         if orientation:
             image = change_orientation(image, orientation)
@@ -60,31 +57,25 @@ class DisplayManager:
         if self.device_config.get_config("inverted_image", False):
             image = image.rotate(180)
 
+        # Enhance AFTER resize
         image = apply_image_enhancement(image, settings)
 
-        # Ensure display exists
         if not hasattr(self, "display"):
             raise ValueError("No valid display instance initialized.")
 
-        # Save last-shown image for restore-on-wake
-        logger.info("Saving image to %s",
-                    self.device_config.current_image_file)
-        image.save(self.device_config.current_image_file)
+        # ⬇️ Only persist if asked to
+        if save_to_cache:
+            logger.info("Saving image to %s",
+                        self.device_config.current_image_file)
+            image.save(self.device_config.current_image_file)
 
-        # Hand off to the concrete driver (support common APIs)
-        try:
-            if hasattr(self.display, "display_image"):
-                self.display.display_image(image, settings)
-            elif hasattr(self.display, "display"):
-                self.display.display(image)
-            elif hasattr(self.display, "draw"):
-                self.display.draw(image)
-                if hasattr(self.display, "refresh"):
-                    self.display.refresh()
-            else:
-                raise AttributeError(
-                    "Display driver exposes no known draw method")
-        except Exception as e:
-            logger.exception("Failed to push image to display: %s", e)
+        # Hand off to the driver
+        if hasattr(self.display, "display_image"):
+            self.display.display_image(image, settings)
+        elif hasattr(self.display, "display"):
+            self.display.display(image)
+        elif hasattr(self.display, "draw"):
+            self.display.draw(image)
+            getattr(self.display, "refresh", lambda: None)()
 
         return image

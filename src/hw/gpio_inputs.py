@@ -63,6 +63,11 @@ class GpioInputManager(threading.Thread):
         self.display_manager.display_image(pil_image)
 
     def _restore_previous_image(self):
+        self.logger.info("Restoring from %s (exists=%s, size=%s bytes)",
+                         self.current_image_path,
+                         os.path.isfile(self.current_image_path),
+                         os.path.getsize(self.current_image_path) if os.path.isfile(self.current_image_path) else 0)
+
         if os.path.isfile(self.current_image_path):
             try:
                 img = Image.open(self.current_image_path).convert("RGB")
@@ -81,8 +86,8 @@ class GpioInputManager(threading.Thread):
     def _on_button_pressed(self):
         self.logger.info("GPIO23 pressed: turning display OFF (black + sleep)")
         try:
-            self._display(self._black_image())
-            # Optional: sleep panel to save power
+            # ❗ Don't overwrite cached previous image
+            self._display(self._black_image(), save_to_cache=False)
             try:
                 self.display_manager.sleep()
             except Exception:
