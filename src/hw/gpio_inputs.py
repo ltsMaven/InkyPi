@@ -23,34 +23,52 @@ class GpioInputManager(threading.Thread):
         self.current_image_path = current_image_path
         self._lock = threading.Lock()
 
+        # Logging + state
+        self.logger = logger
+        self._is_asleep = False  # make sure this exists before handlers run
+
         # Inputs (BCM numbering)
         self.button = Button(23, pull_up=True, bounce_time=0.05)
-        self.pir = MotionSensor(16)  # defaults are fine; tune if needed
+        self.pir = MotionSensor(16)
 
-        # State: start "on"
-        self.display_off = False
-
-        # Bind events
+        # Bind events (press -> sleep/black, release -> wake/restore)
         self.button.when_pressed = self._on_button_pressed
+        self.button.when_released = self._on_button_released
         self.pir.when_motion = self._on_motion
 
     # --- Helpers ---
     def _panel_size(self):
-        w, h = self.device_config.get_resolution()
+        # Support both new and legacy config APIs
+        get_res = getattr(self.device_config, "get_resolution", None)
+        if callable(get_res):
+            w, h = get_res()
+        else:
+            get_dims = getattr(self.device_config,
+                               "get_display_dimensions", None)
+            if not callable(get_dims):
+                raise AttributeError(
+                    "device_config must implement get_resolution() "
+                    "or get_display_dimensions()"
+                )
+            w, h = get_dims()
         return int(w), int(h)
 
     def _black_image(self):
         w, h = self._panel_size()
-        # mode '1' (1-bit): 0=black, 1=white
+        # '1' mode: 0=black, 1=white
         return Image.new('1', (w, h), 0)
 
+    def _display(self, pil_image):
+        # Centralize image_settings usage so all call sites are consistent
+        image_settings = self.device_config.get_config("image_settings", [])
+        self.display_manager.display_image(
+            pil_image, image_settings=image_settings)
+
     def _restore_previous_image(self):
-        # Use whatever InkyPi saves as the "last shown" image
         if os.path.isfile(self.current_image_path):
             try:
                 img = Image.open(self.current_image_path).convert("RGB")
-                self.display_manager.display_image(img,
-                                                   image_settings=self.device_config.get_config("image_settings", []))
+                self._display(img)
                 return True
             except Exception as e:
                 logger.exception(
@@ -58,16 +76,15 @@ class GpioInputManager(threading.Thread):
         # Fallback to white if nothing to restore
         w, h = self._panel_size()
         img = Image.new("RGB", (w, h), "white")
-        self.display_manager.display_image(img,
-                                           image_settings=self.device_config.get_config("image_settings", []))
+        self._display(img)
         return False
 
     # --- Events ---
     def _on_button_pressed(self):
         self.logger.info("GPIO23 pressed: turning display OFF (black + sleep)")
         try:
-            self.display_manager.display_image(self._black_image())
-            # Optional: sleep panel to save power (wrapped to not crash if missing)
+            self._display(self._black_image())
+            # Optional: sleep panel to save power
             try:
                 self.display_manager.sleep()
             except Exception:
@@ -79,16 +96,11 @@ class GpioInputManager(threading.Thread):
     def _on_button_released(self):
         self.logger.info("GPIO23 released: waking and restoring last image")
         try:
-            # Optional wake
             try:
                 self.display_manager.wake()
             except Exception:
                 pass
-
-            if os.path.isfile(self.current_image_path):
-                from PIL import Image
-                img = Image.open(self.current_image_path)
-                self.display_manager.display_image(img)
+            self._restore_previous_image()
             self._is_asleep = False
         except Exception as e:
             self.logger.exception("Error restoring display: %s", e)
@@ -101,9 +113,7 @@ class GpioInputManager(threading.Thread):
                     self.display_manager.wake()
                 except Exception:
                     pass
-                if os.path.isfile(self.current_image_path):
-                    img = Image.open(self.current_image_path)
-                    self.display_manager.display_image(img)
+                self._restore_previous_image()
                 self._is_asleep = False
             except Exception as e:
                 self.logger.exception("Error handling PIR wake: %s", e)
@@ -111,6 +121,5 @@ class GpioInputManager(threading.Thread):
     def run(self):
         logger.info(
             "GPIO input manager thread started (Button=GPIO23, PIR=GPIO16)")
-        # Just keep the thread alive
         while True:
             time.sleep(1)

@@ -6,6 +6,7 @@ from model import PlaylistManager, RefreshInfo
 
 logger = logging.getLogger(__name__)
 
+
 class Config:
     # Base path for the project directory
     BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -14,7 +15,8 @@ class Config:
     config_file = os.path.join(BASE_DIR, "config", "device.json")
 
     # File path for storing the current image being displayed
-    current_image_file = os.path.join(BASE_DIR, "static", "images", "current_image.png")
+    current_image_file = os.path.join(
+        BASE_DIR, "static", "images", "current_image.png")
 
     # Directory path for storing plugin instance images
     plugin_image_dir = os.path.join(BASE_DIR, "static", "images", "plugins")
@@ -35,6 +37,23 @@ class Config:
 
         return config
 
+    def get_config(self, key=None, default=None):
+        if key is not None:
+            return self.config.get(key, default)
+        return self.config
+
+    def get_resolution(self):
+        """Returns (width, height) from config with a safe fallback."""
+        res = self.get_config("resolution", (800, 480))
+        try:
+            w, h = res
+        except Exception:
+            w, h = (800, 480)
+        return int(w), int(h)
+    # Alias AFTER the final definition so both names behave the same
+    get_display_dimensions = get_resolution
+
+
     def read_plugins_list(self):
         """Reads the plugin-info.json config JSON from each plugin folder. Excludes the base plugin."""
         # Iterate over all plugin folders
@@ -43,9 +62,11 @@ class Config:
             plugin_path = os.path.join(self.BASE_DIR, "plugins", plugin)
             if os.path.isdir(plugin_path) and plugin != "__pycache__":
                 # Check if the plugin-info.json file exists
-                plugin_info_file = os.path.join(plugin_path, "plugin-info.json")
+                plugin_info_file = os.path.join(
+                    plugin_path, "plugin-info.json")
                 if os.path.isfile(plugin_info_file):
-                    logger.debug(f"Reading plugin info from {plugin_info_file}")
+                    logger.debug(
+                        f"Reading plugin info from {plugin_info_file}")
                     with open(plugin_info_file) as f:
                         plugin_info = json.load(f)
                     plugins_list.append(plugin_info)
@@ -60,12 +81,6 @@ class Config:
         with open(self.config_file, 'w') as outfile:
             json.dump(self.config, outfile, indent=4)
 
-    def get_config(self, key=None, default={}):
-        """Gets the value of a specific configuration key or returns the entire config if none provided."""
-        if key is not None:
-            return self.config.get(key, default)
-        return self.config
-
     def get_plugins(self):
         """Returns the list of plugin configurations."""
         return self.plugins_list
@@ -74,11 +89,6 @@ class Config:
         """Finds and returns a plugin config by its ID."""
         return next((plugin for plugin in self.plugins_list if plugin['id'] == plugin_id), None)
 
-    def get_resolution(self):
-        """Returns the display resolution as a tuple (width, height) from the configuration."""
-        resolution = self.get_config("resolution")
-        width, height = resolution
-        return (int(width), int(height))
 
     def update_config(self, config):
         """Updates the config with the new values provided and writes to the config file."""
@@ -98,7 +108,8 @@ class Config:
 
     def load_playlist_manager(self):
         """Loads the playlist manager object from the config."""
-        playlist_manager = PlaylistManager.from_dict(self.get_config("playlist_config"))
+        playlist_manager = PlaylistManager.from_dict(
+            self.get_config("playlist_config"))
         if not playlist_manager.playlists:
             playlist_manager.add_default_playlist()
         return playlist_manager
