@@ -34,7 +34,7 @@ class GpioInputManager(threading.Thread):
 
         # Bind events (press -> sleep/black, release -> wake/restore)
         self.button.when_pressed = self._toggle_power
-        self.button.when_released = None
+        # self.button.when_released = None
         self.pir.when_motion = self._on_motion
 
     # --- Helpers ---
@@ -85,6 +85,7 @@ class GpioInputManager(threading.Thread):
             pil_image, save_to_cache=save_to_cache)
 
     def _restore_previous_image(self):
+        path = self.current_image_path
         self.logger.info("Restoring from %s (exists=%s, size=%s bytes)",
                          self.current_image_path,
                          os.path.isfile(self.current_image_path),

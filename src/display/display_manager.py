@@ -41,6 +41,23 @@ class DisplayManager:
                 self.display = WaveshareDisplay(device_config)
             else:
                 raise ValueError(f"Unsupported display type: {display_type}")
+        
+        self._asleep = False
+
+    def is_asleep(self):
+        return self._asleep
+
+    def sleep(self):
+        self._asleep = True
+        if hasattr(self.display, "sleep"):
+            try: self.display.sleep()
+            except Exception: pass
+
+    def wake(self):
+        self._asleep = False
+        if hasattr(self.display, "wake"):
+            try: self.display.wake()
+            except Exception: pass
 
     def display_image(self, image, image_settings=None, save_to_cache=True):
         settings = (
@@ -64,10 +81,16 @@ class DisplayManager:
             raise ValueError("No valid display instance initialized.")
 
         # ⬇️ Only persist if asked to
-        if save_to_cache:
-            logger.info("Saving image to %s",
-                        self.device_config.current_image_file)
+        # 👇 skip cache writes while asleep
+        if save_to_cache and not self._asleep:
+            logger.info("Saving image to %s", self.device_config.current_image_file)
             image.save(self.device_config.current_image_file)
+
+        # 👇 skip pushing to hardware while asleep unless explicitly forced
+        if self._asleep and not force_draw:
+            logger.debug("Display asleep: skipping hardware draw")
+            return image
+
 
         # Hand off to the driver
         if hasattr(self.display, "display_image"):
