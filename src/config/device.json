@@ -6,5 +6,16 @@
     "startup": true
 ,  "display_type": "epd7in5b_V2",
     "ai_quote_on_motion": true,
-    "pir_quote_cooldown_seconds": 20
+    "pir_quote_cooldown_seconds": 20,
+
+    "playlist_config": {
+    "playlists": [],
+    "active_playlist": null
+  },
+  "refresh_info": {
+    "refresh_time": null,
+    "image_hash": "",
+    "plugin_id": null,
+    "plugin_instance": null
+  }
 }
