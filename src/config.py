@@ -101,6 +101,8 @@ class Config:
         if write:
             self.write_config()
 
+    # help me
+
     def load_env_key(self, key):
         """Loads an environment variable using dotenv and returns its value."""
         load_dotenv(override=True)
