@@ -39,7 +39,6 @@ class GpioInputManager(threading.Thread):
         self.button = Button(23, pull_up=True, bounce_time=0.10)
         self.button.when_pressed = self._press_black  # release ignored
 
-        # PIR (enable only if configured)
         self.pir = None
         if self.ai_motion_enabled:
             try:
@@ -104,7 +103,7 @@ class GpioInputManager(threading.Thread):
                     self.display_manager.wait_until_idle()
                 except Exception:
                     pass
-                
+
                 try:
                     self.display_manager.sleep()
                 except Exception:
