@@ -1,6 +1,9 @@
 # src/display/display_manager.py
 import fnmatch
 import logging
+import time
+import threading
+
 from utils.image_utils import resize_image, change_orientation, apply_image_enhancement
 from display.mock_display import MockDisplay
 
@@ -41,64 +44,115 @@ class DisplayManager:
                 self.display = WaveshareDisplay(device_config)
             else:
                 raise ValueError(f"Unsupported display type: {display_type}")
-        
+
+        # Concurrency + state
+        self._lock = threading.RLock()
         self._asleep = False
+
+    # ---- Power state --------------------------------------------------------
 
     def is_asleep(self):
         return self._asleep
 
     def sleep(self):
-        self._asleep = True
-        if hasattr(self.display, "sleep"):
-            try: self.display.sleep()
-            except Exception: pass
+        with self._lock:
+            self._asleep = True
+            if hasattr(self.display, "sleep"):
+                try:
+                    self.display.sleep()
+                except Exception:
+                    pass
 
     def wake(self):
-        self._asleep = False
-        if hasattr(self.display, "wake"):
-            try: self.display.wake()
-            except Exception: pass
+        with self._lock:
+            self._asleep = False
+            if hasattr(self.display, "wake"):
+                try:
+                    self.display.wake()
+                except Exception:
+                    pass
 
-    def display_image(self, image, image_settings=None, save_to_cache=True):
-        settings = (
-            image_settings if isinstance(image_settings, dict)
-            else (self.device_config.get_config("image_settings", {}) or {})
-        )
+    # ---- Drawing ------------------------------------------------------------
 
-        orientation = self.device_config.get_config("orientation", None)
-        if orientation:
-            image = change_orientation(image, orientation)
+    def display_image(self, image, image_settings=None, save_to_cache=True, force_draw=False):
+        """
+        Render an image to the panel.
+        - save_to_cache: write current_image.png (ignored if asleep)
+        - force_draw: draw to hardware even if asleep
+        """
+        with self._lock:
+            settings = (
+                image_settings if isinstance(image_settings, dict)
+                else (self.device_config.get_config("image_settings", {}) or {})
+            )
 
-        image = resize_image(image, self.device_config.get_resolution())
+            # Transform pipeline
+            orientation = self.device_config.get_config("orientation", None)
+            if orientation:
+                image = change_orientation(image, orientation)
 
-        if self.device_config.get_config("inverted_image", False):
-            image = image.rotate(180)
+            image = resize_image(image, self.device_config.get_resolution())
 
-        # Enhance AFTER resize
-        image = apply_image_enhancement(image, settings)
+            if self.device_config.get_config("inverted_image", False):
+                image = image.rotate(180)
 
-        if not hasattr(self, "display"):
-            raise ValueError("No valid display instance initialized.")
+            image = apply_image_enhancement(image, settings)
 
-        # ⬇️ Only persist if asked to
-        # 👇 skip cache writes while asleep
-        if save_to_cache and not self._asleep:
-            logger.info("Saving image to %s", self.device_config.current_image_file)
-            image.save(self.device_config.current_image_file)
+            # Cache only when awake
+            if save_to_cache and not self._asleep:
+                logger.info("Saving image to %s",
+                            self.device_config.current_image_file)
+                image.save(self.device_config.current_image_file)
 
-        # 👇 skip pushing to hardware while asleep unless explicitly forced
-        if self._asleep and not force_draw:
-            logger.debug("Display asleep: skipping hardware draw")
+            # Skip drawing while asleep unless forced
+            if self._asleep and not force_draw:
+                logger.debug("Display asleep: skipping hardware draw")
+                return image
+
+            if not getattr(self, "display", None):
+                raise ValueError("No valid display instance initialized.")
+
+            # Hand off to the driver
+            try:
+                if hasattr(self.display, "display_image"):
+                    self.display.display_image(image, settings)
+                elif hasattr(self.display, "display"):
+                    self.display.display(image)
+                elif hasattr(self.display, "draw"):
+                    self.display.draw(image)
+                    getattr(self.display, "refresh", lambda: None)()
+            except Exception as e:
+                logger.exception("Failed to push image to display: %s", e)
+
             return image
 
+    # ---- Panel utilities ----------------------------------------------------
 
-        # Hand off to the driver
-        if hasattr(self.display, "display_image"):
-            self.display.display_image(image, settings)
-        elif hasattr(self.display, "display"):
-            self.display.display(image)
-        elif hasattr(self.display, "draw"):
-            self.display.draw(image)
-            getattr(self.display, "refresh", lambda: None)()
+    def wait_until_idle(self):
+        """Block until the panel is ready (best-effort; falls back to a delay)."""
+        d = self.display
+        try:
+            if hasattr(d, "wait_until_idle"):
+                d.wait_until_idle()
+                return
+            epd = getattr(d, "epd", None)
+            if epd and hasattr(epd, "ReadBusy"):
+                epd.ReadBusy()
+                return
+        except Exception:
+            pass
+        time.sleep(3)  # conservative full-refresh delay
 
-        return image
+    def clear_panel(self, to_white=True):
+        """Send a full-panel clear to reduce banding/ghosting."""
+        with self._lock:
+            d = self.display
+            try:
+                if hasattr(d, "clear"):
+                    d.clear("white" if to_white else "black")
+                    return
+                if hasattr(d, "Clear"):
+                    d.Clear(0xFF if to_white else 0x00)
+                    return
+            except Exception:
+                logger.exception("Panel clear failed")
