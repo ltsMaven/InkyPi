@@ -1,41 +1,46 @@
 <div class="form-group">
-    <div class="form-group nowrap">
-        <label for="title" class="form-label">Title:</label>
-        <input type="text" id="title" name="title" placeholder="Type something..." required class="form-input">
-    </div>
-
-    <!-- Text Model Dropdown -->
-    <div class="form-group nowrap">
-        <label for="textModel" class="form-label">Text Model:</label>
-        <select id="textModel" name="textModel" class="form-input">
-            <option value="gpt-4o-mini">GPT-4o mini</option>
-            <option value="gpt-4o">GPT-4o</option>
-            <option value="gpt-4.1">GPT-4.1</option>
-            <option value="gpt-4.1-mini">GPT-4.1 mini</option>
-            <option value="gpt-4.1-nano">GPT-4.1 nano</option>
-            <option value="gpt-5">GPT-5</option>
-            <option value="gpt-5-mini">GPT-5 mini</option>
-            <option value="gpt-5-nano">GPT-5 nano</option>
-        </select>
-    </div>
-</div>
-
-<div class="form-group">
-    <label for="textPrompt" class="form-label">Text Prompt:</label>
-    <input type="text" id="textPrompt" name="textPrompt" placeholder="Type something..." required class="form-input">
+  <button type="button" id="generateBtn" class="form-input">Generate Quote</button>
 </div>
 
 <script>
+  document.addEventListener('DOMContentLoaded', () => {
+    const btn = document.getElementById('generateBtn');
 
-    // populate form values from plugin settings
-    document.addEventListener('DOMContentLoaded', () => {        
-        if (loadPluginSettings) {
-            // Populate text inputs
-            document.getElementById('title').value = pluginSettings.title || '';
-            document.getElementById('textPrompt').value = pluginSettings.textPrompt || '';
-            
-            // Populate text model
-            document.getElementById('textModel').value = pluginSettings.textModel;
+    // Try to infer pluginId from the page; if your base template exposes a different
+    // variable, replace pluginId below accordingly.
+    const pluginId = (window.pluginId || (window.pluginSettings && window.pluginSettings.id));
+    // Fallback: derive from URL (/plugins/<pluginId>/settings)
+    const urlParts = location.pathname.split('/').filter(Boolean);
+    const urlPluginId = urlParts.includes('plugins') ? urlParts[urlParts.indexOf('plugins') + 1] : null;
+    const resolvedPluginId = pluginId || urlPluginId;
+
+    btn.addEventListener('click', async () => {
+      btn.disabled = true;
+      const original = btn.textContent;
+      btn.textContent = 'Generating…';
+
+      try {
+        // Adjust this path to match your manual-update route if different:
+        const res = await fetch(`/plugins/manual-update/${resolvedPluginId}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            plugin_id: resolvedPluginId,
+            plugin_settings: {},  // you can pass overrides if you want
+          })
+        });
+        if (!res.ok) {
+          const msg = await res.text();
+          throw new Error(msg || 'Request failed');
         }
+        // Optional: reload preview or show a toast
+        location.reload(); // reloads to show the new quote image
+      } catch (err) {
+        alert('Failed to generate quote: ' + (err?.message || err));
+      } finally {
+        btn.disabled = false;
+        btn.textContent = original;
+      }
     });
+  });
 </script>

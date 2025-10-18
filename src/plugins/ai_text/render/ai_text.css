@@ -1,4 +1,3 @@
-
 .text-content {
   display: flex;
   flex-direction: column;
@@ -14,8 +13,6 @@
 
 .title {
   font-weight: bold;
-  font-size: 4rem;
-  max-width: 100%;
   font-size: min(10cqh, 8cqi);
 }
 
@@ -27,4 +24,5 @@
   font-size: min(6cqh, 5cqi);
   white-space: pre-line;
   overflow: hidden;
+  letter-spacing: 0.02em; /* optional */
 }
