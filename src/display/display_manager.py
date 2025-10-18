@@ -3,7 +3,7 @@ import fnmatch
 import logging
 import time
 import threading
-
+from PIL import Image, ImageStat  # <-- add
 from utils.image_utils import resize_image, change_orientation, apply_image_enhancement
 from display.mock_display import MockDisplay
 
@@ -20,6 +20,18 @@ try:
 except ImportError:
     WaveshareDisplay = None
     logger.info("Waveshare display not available, hardware support disabled")
+
+
+# ---- helper ---------------------------------------------------------------
+
+def _is_solid_black(img: Image.Image) -> bool:
+    """Return True if the image is all black (cheap check)."""
+    try:
+        # Convert to 8-bit luminance and check extrema
+        lum = img.convert("L")
+        return lum.getextrema() == (0, 0)
+    except Exception:
+        return False
 
 
 class DisplayManager:
@@ -81,6 +93,32 @@ class DisplayManager:
         - force_draw: draw to hardware even if asleep
         """
         with self._lock:
+            # ---- FAST PATH: solid black ----
+            if _is_solid_black(image):
+                w, h = self.device_config.get_resolution()
+                if image.size != (w, h):
+                    image = image.resize((w, h))
+                save_to_cache = False  # never cache black
+
+                if self._asleep and not force_draw:
+                    return image
+                if not getattr(self, "display", None):
+                    raise ValueError("No valid display instance initialized.")
+
+                try:
+                    if hasattr(self.display, "display_image"):
+                        self.display.display_image(
+                            image, {})  # no enhancements
+                    elif hasattr(self.display, "display"):
+                        self.display.display(image)
+                    elif hasattr(self.display, "draw"):
+                        self.display.draw(image)
+                        getattr(self.display, "refresh", lambda: None)()
+                except Exception as e:
+                    logger.exception("Failed to push black frame: %s", e)
+                return image
+
+            # ---- NORMAL PATH ------------------------------------------------
             settings = (
                 image_settings if isinstance(image_settings, dict)
                 else (self.device_config.get_config("image_settings", {}) or {})
@@ -112,7 +150,7 @@ class DisplayManager:
             if not getattr(self, "display", None):
                 raise ValueError("No valid display instance initialized.")
 
-            # Hand off to the driver
+            # Push to hardware
             try:
                 if hasattr(self.display, "display_image"):
                     self.display.display_image(image, settings)
