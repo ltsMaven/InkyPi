@@ -30,6 +30,8 @@ class GpioInputManager(threading.Thread):
         self.black_image_path = black_image_path
 
         self.logger = logger
+        self.logger = logging.getLogger(__name__)
+
         self._lock = threading.RLock()
         self._is_asleep = False
 
@@ -61,7 +63,7 @@ class GpioInputManager(threading.Thread):
                 self.logger.info(
                     "PIR enabled on GPIO16 with %ss cooldown", self.motion_cooldown)
 
-        logger.info("Black Img path: ", black_image_path)
+        self.logger.info(f"Black Img path: {self.black_image_path}")
 
     # --- helpers -------------------------------------------------------------
 
