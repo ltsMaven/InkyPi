@@ -40,19 +40,11 @@ class GpioInputManager(threading.Thread):
             "pir_quote_cooldown_seconds", 20))
         self._last_motion_ts = 0
 
-        # --------------- Button (BCM23) ----------------
-        global _SHARED_BUTTON
-        if _SHARED_BUTTON is None:
-            try:
-                _SHARED_BUTTON = Button(23, pull_up=True, bounce_time=0.10)
-            except GPIOPinInUse:
-                # If another instance already created it in this process, just reuse it
-                pass
-        self.button = _SHARED_BUTTON                        # <-- reuse
-        # Always (re)bind the handler; last one wins, which is fine since we only want one
-        self.button.when_pressed = self._press_black
+        # Button (BCM numbering)
+        self.button = Button(23, pull_up=True, bounce_time=0.10)
+        self.button.when_pressed = self._press_black  # release ignored
 
-        # --------------- PIR (BCM16) -------------------
+        # PIR (enable only if configured)
         self.pir = None
         if self.ai_motion_enabled:
             global _SHARED_PIR
@@ -121,7 +113,7 @@ class GpioInputManager(threading.Thread):
                     self.display_manager.wait_until_idle()
                 except Exception:
                     pass
-
+                
                 try:
                     self.display_manager.sleep()
                 except Exception:

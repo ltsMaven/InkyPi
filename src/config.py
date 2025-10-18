@@ -73,8 +73,7 @@ class Config:
 
     def get_config(self, key=None, default=None):
         if key is not None:
-            val = self.config.get(key, default)
-            return default if val is None else val   # ← add this line
+            return self.config.get(key, default)
         return self.config
 
     def update_config(self, config):
@@ -91,6 +90,7 @@ class Config:
     # ---------------------------- models ------------------------------------
 
     def load_playlist_manager(self):
+        """Resilient load: tolerate missing/null structure."""
         data = self.get_config("playlist_config", {}) or {}
         pm = PlaylistManager.from_dict(data)
         if not pm.playlists:
@@ -98,6 +98,7 @@ class Config:
         return pm
 
     def load_refresh_info(self):
+        """Resilient load: tolerate missing/null structure."""
         data = self.get_config("refresh_info", {}) or {}
         return RefreshInfo.from_dict(data)
 
