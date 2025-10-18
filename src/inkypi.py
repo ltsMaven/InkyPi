@@ -86,6 +86,35 @@ CURRENT_IMAGE_PATH = os.path.join(
     os.path.dirname(__file__), "static", "images", "current_image.png"
 )
 
+# Path for a reusable solid-black image
+BLACK_IMAGE_PATH = os.path.join(
+    os.path.dirname(__file__), "static", "images", "black.png"
+)
+
+def ensure_black_image(path, size):
+    from PIL import Image
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    try:
+        if not os.path.isfile(path):
+            Image.new("RGB", size, "black").save(path)
+        else:
+            # Ensure correct size (re-create if mismatch/corrupt)
+            with Image.open(path) as im:
+                if im.size != size:
+                    Image.new("RGB", size, "black").save(path)
+    except Exception:
+        Image.new("RGB", size, "black").save(path)
+
+# Make sure we have a correctly sized black image for this panel
+panel_wh = device_config.get_resolution()
+if device_config.get_config("orientation") == "vertical":
+    panel_wh = panel_wh[::-1]
+ensure_black_image(BLACK_IMAGE_PATH, panel_wh)
+
+gpio_mgr = GpioInputManager(
+    display_manager, device_config, CURRENT_IMAGE_PATH, refresh_task, BLACK_IMAGE_PATH
+)
+
 # Set additional parameters
 app.config['MAX_FORM_PARTS'] = 10_000
 

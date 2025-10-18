@@ -16,12 +16,13 @@ class GpioInputManager(threading.Thread):
       - PIR (GPIO16, optional): when AI Text is on-screen, generate a new quote with cooldown.
     """
 
-    def __init__(self, display_manager, device_config, current_image_path, refresh_task):
+    def __init__(self, display_manager, device_config, current_image_path, refresh_task, black_image_path=None):
         super().__init__(daemon=True)
         self.display_manager = display_manager
         self.device_config = device_config
         self.current_image_path = current_image_path
         self.refresh_task = refresh_task
+        self.black_image_path = black_image_path
 
         self.logger = logger
         self._lock = threading.RLock()
@@ -77,15 +78,33 @@ class GpioInputManager(threading.Thread):
     # --- button handler ------------------------------------------------------
 
     def _press_black(self):
-        """Always draw black and sleep (no restore on subsequent presses)."""
+        """Always draw local black image (fallback to generated), then sleep (no cache write)."""
         with self._lock:
             try:
-                self.logger.info("Button: draw BLACK (no cache write) + sleep")
-                self._display(self._black_image(), save_to_cache=False)
+                self.logger.info("Button: draw LOCAL black (no cache write) + sleep")
+
+                # Prefer the pre-made on-disk black image if provided
+                img = None
+                if getattr(self, "black_image_path", None):
+                    try:
+                        img = Image.open(self.black_image_path).convert("RGB")
+                    except Exception:
+                        img = None
+
+                # Fallback: generate a solid black at panel size
+                if img is None:
+                    w, h = self._panel_size()
+                    img = Image.new("RGB", (w, h), "black")
+
+                # Do not overwrite current_image.png when blanking
+                self._display(img, save_to_cache=False)
+
+                # Ensure hardware draw finishes, then sleep the panel
                 try:
                     self.display_manager.wait_until_idle()
                 except Exception:
                     pass
+                
                 try:
                     self.display_manager.sleep()
                 except Exception:
