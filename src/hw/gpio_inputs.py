@@ -4,9 +4,14 @@ import time
 import logging
 from PIL import Image
 from gpiozero import Button, MotionSensor
+from gpiozero.exc import GPIOPinInUse          # <-- NEW: import
 from refresh_task import ManualRefresh
 
 logger = logging.getLogger(__name__)
+
+# --- SINGLETON GPIO DEVICES (reuse across any accidental double-inits) -----
+_SHARED_BUTTON = None                           # <-- NEW
+_SHARED_PIR = None                              # <-- NEW
 
 
 class GpioInputManager(threading.Thread):
@@ -35,21 +40,34 @@ class GpioInputManager(threading.Thread):
             "pir_quote_cooldown_seconds", 20))
         self._last_motion_ts = 0
 
-        # Button (BCM numbering)
-        self.button = Button(23, pull_up=True, bounce_time=0.10)
-        self.button.when_pressed = self._press_black  # release ignored
+        # --------------- Button (BCM23) ----------------
+        global _SHARED_BUTTON
+        if _SHARED_BUTTON is None:
+            try:
+                _SHARED_BUTTON = Button(23, pull_up=True, bounce_time=0.10)
+            except GPIOPinInUse:
+                # If another instance already created it in this process, just reuse it
+                pass
+        self.button = _SHARED_BUTTON                        # <-- reuse
+        # Always (re)bind the handler; last one wins, which is fine since we only want one
+        self.button.when_pressed = self._press_black
 
+        # --------------- PIR (BCM16) -------------------
         self.pir = None
         if self.ai_motion_enabled:
-            try:
-                self.pir = MotionSensor(16)
-                self.pir.when_motion = self._on_motion  # <-- bind AFTER creating self.pir
+            global _SHARED_PIR
+            if _SHARED_PIR is None:
+                try:
+                    _SHARED_PIR = MotionSensor(16)
+                except Exception as e:
+                    self.ai_motion_enabled = False
+                    self.logger.exception(
+                        "Failed to init PIR; disabling motion feature: %s", e)
+            self.pir = _SHARED_PIR                           # <-- reuse
+            if self.pir:
+                self.pir.when_motion = self._on_motion
                 self.logger.info(
                     "PIR enabled on GPIO16 with %ss cooldown", self.motion_cooldown)
-            except Exception as e:
-                self.ai_motion_enabled = False
-                self.logger.exception(
-                    "Failed to init PIR; disabling motion feature: %s", e)
 
     # --- helpers -------------------------------------------------------------
 
@@ -80,7 +98,8 @@ class GpioInputManager(threading.Thread):
         """Always draw local black image (fallback to generated), then sleep (no cache write)."""
         with self._lock:
             try:
-                self.logger.info("Button: draw LOCAL black (no cache write) + sleep")
+                self.logger.info(
+                    "Button: draw LOCAL black (no cache write) + sleep")
 
                 # Prefer the pre-made on-disk black image if provided
                 img = None
@@ -92,8 +111,7 @@ class GpioInputManager(threading.Thread):
 
                 # Fallback: generate a solid black at panel size
                 if img is None:
-                    w, h = self._panel_size()
-                    img = Image.new("RGB", (w, h), "black")
+                    img = self._black_image()
 
                 # Do not overwrite current_image.png when blanking
                 self._display(img, save_to_cache=False)
