@@ -4,5 +4,7 @@
     "inverted_image": false,
     "scheduler_sleep_time": 60,
     "startup": true
-,  "display_type": "epd7in5b_V2"
+,  "display_type": "epd7in5b_V2",
+    "ai_quote_on_motion": true,
+    "pir_quote_cooldown_seconds": 20
 }

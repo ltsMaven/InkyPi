@@ -99,7 +99,7 @@ if __name__ == '__main__':
 
     try:
         gpio_mgr = GpioInputManager(
-            display_manager, device_config, CURRENT_IMAGE_PATH)
+            display_manager, device_config, CURRENT_IMAGE_PATH, refresh_task)
         gpio_mgr.start()
         logger.info("GPIO input manager started")
     except Exception as e:
