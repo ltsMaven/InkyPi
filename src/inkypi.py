@@ -111,9 +111,9 @@ if device_config.get_config("orientation") == "vertical":
     panel_wh = panel_wh[::-1]
 ensure_black_image(BLACK_IMAGE_PATH, panel_wh)
 
-gpio_mgr = GpioInputManager(
-    display_manager, device_config, CURRENT_IMAGE_PATH, refresh_task, BLACK_IMAGE_PATH
-)
+# gpio_mgr = GpioInputManager(
+#     display_manager, device_config, CURRENT_IMAGE_PATH, refresh_task, BLACK_IMAGE_PATH
+# )
 
 # Set additional parameters
 app.config['MAX_FORM_PARTS'] = 10_000
