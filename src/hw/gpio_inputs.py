@@ -61,6 +61,8 @@ class GpioInputManager(threading.Thread):
                 self.logger.info(
                     "PIR enabled on GPIO16 with %ss cooldown", self.motion_cooldown)
 
+        logger.info("Black Img path: ", black_image_path)
+
     # --- helpers -------------------------------------------------------------
 
     def _panel_size(self):
