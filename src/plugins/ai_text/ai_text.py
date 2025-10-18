@@ -2,6 +2,7 @@ from plugins.base_plugin.base_plugin import BasePlugin
 from openai import OpenAI
 from datetime import datetime
 import logging
+import re
 
 logger = logging.getLogger(__name__)
 
@@ -10,7 +11,7 @@ DEFAULT_MODEL = "gpt-4o-mini"  # fallback if none set in config
 
 class AIText(BasePlugin):
     """
-    Generates a short, original AI-related quote. The settings form has a single
+    Generates a short quote with a human author. The settings form has a single
     'Generate Quote' button that triggers a manual update for this plugin.
     """
 
@@ -21,72 +22,99 @@ class AIText(BasePlugin):
             "service": "OpenAI",
             "expected_key": "OPEN_AI_SECRET"
         }
-        # Keep style controls if you want (font/size etc.)
         template_params['style_settings'] = True
-        # (No textPrompt/textModel fields anymore)
         return template_params
 
     def generate_image(self, settings, device_config):
-        # API key
         api_key = device_config.load_env_key("OPEN_AI_SECRET")
         if not api_key:
             raise RuntimeError("OPEN AI API Key not configured.")
 
-        # Model (optional override from device config; otherwise default)
         model = device_config.get_config("openai_model", DEFAULT_MODEL)
+        title = settings.get("title") or "Quote"
 
-        # Title (optional; can be themed in CSS/template)
-        title = settings.get("title") or "AI Quote"
-
-        # Call LLM to get a short, original quote about AI/tech/learning
         try:
             client = OpenAI(api_key=api_key)
             quote = AIText._fetch_random_quote(client, model)
         except Exception as e:
-            logger.exception("Failed to fetch AI quote")
+            logger.exception("Failed to fetch quote")
             raise RuntimeError(
                 "OpenAI request failed; check logs and API key.") from e
 
-        # Dimensions (respect orientation)
-        width, height = device_config.get_resolution()
+        # Respect orientation
+        w, h = device_config.get_resolution()
         if device_config.get_config("orientation") == "vertical":
-            width, height = height, width
+            w, h = h, w
 
         params = {
             "title": title,
-            "content": quote,
+            "content": quote,            # two lines: text then "— Author"
             "plugin_settings": settings,
         }
-        # Render using your existing HTML/CSS template
-        return self.render_image((width, height), "ai_text.html", "ai_text.css", params)
+        return self.render_image((w, h), "ai_text.html", "ai_text.css", params)
 
     # ------------------ helpers ------------------
 
     @staticmethod
     def _fetch_random_quote(ai_client: OpenAI, model: str) -> str:
         """
-        Ask the model for one short, original, attribution-free quote
-        related to AI/technology/learning/curiosity. Keep it punchy.
+        Return ONE real, verifiable quote by a human author, formatted as:
+
+        <quote text>\n— <author name>
+
+        The quote should be on themes like technology, learning, creativity, curiosity, or perseverance.
+        No extra lines, no quotation marks.
         """
         system = (
-            "You are a succinct quotes generator. Produce one original, "
-            "inspirational quote related to AI/technology/learning/curiosity. "
-            "Constraints: 10–22 words. Do NOT include an author name or quotes "
-            "characters. Output only the quote text."
-            f" Today is {datetime.today().strftime('%Y-%m-%d')}."
+            "You are a quotes generator. Produce ONE well-known, verifiable quote by a human author "
+            "(not an AI). Topic should relate to technology, learning, creativity, curiosity, or perseverance. "
+            "Constraints for the quote text (excluding author): 10–24 words. "
+            "OUTPUT FORMAT EXACTLY:\n"
+            "<quote text>\\n— <author full name>\n"
+            "Do NOT add quotation marks, source links, years, or any extra text. "
+            "Do NOT invent; if you are not certain of exact wording, respond with SKIP. "
+            f"Today is {datetime.today().strftime('%Y-%m-%d')}."
         )
-        user = "Generate one original short quote now."
+        user = "Return one quote now."
 
-        resp = ai_client.chat.completions.create(
-            model=model,
-            messages=[
-                {"role": "system", "content": system},
-                {"role": "user", "content": user},
-            ],
-            temperature=1.0,
-        )
-        text = (resp.choices[0].message.content or "").strip()
-        # Safety clamp: remove stray quotes/attributions if model slips
-        text = text.replace("“", "").replace("”", "").replace('"', "")
-        # Don’t allow multi-line blobs
-        return text.splitlines()[0]
+        # Up to 3 attempts in case the model replies SKIP or misformats
+        for _ in range(3):
+            resp = ai_client.chat.completions.create(
+                model=model,
+                messages=[
+                    {"role": "system", "content": system},
+                    {"role": "user", "content": user},
+                ],
+                temperature=0.7,
+            )
+            text = (resp.choices[0].message.content or "").strip()
+
+            # Reject SKIP or empty
+            if not text or text.upper().startswith("SKIP"):
+                continue
+
+            # Normalize smart quotes & trim
+            text = text.replace("“", "").replace(
+                "”", "").replace('"', "").strip()
+
+            # Accept if it matches "<something>\n— <something>"
+            if "\n— " in text:
+                lines = text.splitlines()
+                # squash any extra blank lines
+                lines = [ln for ln in lines if ln.strip()]
+                if len(lines) >= 2 and lines[1].lstrip().startswith("—"):
+                    # Keep exactly two lines
+                    quote_line = lines[0].strip()
+                    author_line = lines[1].strip()
+                    return f"{quote_line}\n{author_line}"
+
+            # Try to coerce simple "<text> - Author" into desired form
+            m = re.match(r"^(.*?)[\s\-–—]{1,2}\s*([A-Za-z][^,\n]+)$", text)
+            if m:
+                quote_line = m.group(1).strip()
+                author = m.group(2).strip()
+                if quote_line and author:
+                    return f"{quote_line}\n— {author}"
+
+        # Fallback: minimal safe message if all attempts fail
+        return "Stay curious and keep learning.\n— Unknown"
