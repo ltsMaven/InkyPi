@@ -2,6 +2,7 @@
 import threading
 import time
 import logging
+import os
 from PIL import Image
 from gpiozero import Button, MotionSensor
 from gpiozero.exc import GPIOPinInUse          # <-- NEW: import
@@ -86,6 +87,44 @@ class GpioInputManager(threading.Thread):
         self.display_manager.display_image(
             pil_image, save_to_cache=save_to_cache)
 
+    def _wake_and_restore(self):
+        """Wake the panel and redraw the last shown image (or black fallback)."""
+        with self._lock:
+            self.logger.info("Waking display and restoring last image")
+            # Try the display manager's wake/init hooks if available
+            try:
+                if hasattr(self.display_manager, "wake"):
+                    self.display_manager.wake()
+                elif hasattr(self.display_manager, "init"):
+                    self.display_manager.init()
+            except Exception:
+                # not fatal; many e-paper drivers wake on first draw anyway
+                pass
+
+            img = None
+            try:
+                if self.current_image_path and os.path.isfile(self.current_image_path):
+                    img = Image.open(self.current_image_path).convert("RGB")
+            except Exception:
+                img = None
+            if img is None:
+                # fall back to a solid black (or your pre-made file)
+                if getattr(self, "black_image_path", None):
+                    try:
+                        img = Image.open(self.black_image_path).convert("RGB")
+                    except Exception:
+                        img = None
+                if img is None:
+                    img = self._black_image()
+
+            self._display(img, save_to_cache=False)
+            try:
+                self.display_manager.wait_until_idle()
+            except Exception:
+                pass
+            self._is_asleep = False
+            self.logger.info("Panel is awake")
+
     # --- button handler ------------------------------------------------------
 
     def _press_black(self):
@@ -93,7 +132,11 @@ class GpioInputManager(threading.Thread):
         """Always draw local black image (fallback to generated), then sleep (no cache write)."""
         with self._lock:
             try:
-                logger.info("trying with self._lock")
+                # TOGGLE: if asleep, wake up; otherwise blank & sleep
+                if self._is_asleep or getattr(self.display_manager, "is_asleep", lambda: False)():
+                    self._wake_and_restore()
+                    return
+
                 self.logger.info(
                     "Button: draw LOCAL black (no cache write) + sleep")
 
@@ -123,15 +166,18 @@ class GpioInputManager(threading.Thread):
                 except Exception:
                     pass
                 self._is_asleep = True
+                self.logger.info("Panel is asleep")
             except Exception as e:
                 self.logger.exception("Error handling button press: %s", e)
 
     # --- PIR motion -> new AI quote -----------------------------------------
 
     def _on_motion(self):
+        if self._is_asleep or getattr(self.display_manager, "is_asleep", lambda: False)():
+            self.logger.info("Motion detected: waking sleeping panel")
+            self._wake_and_restore()
+
         if not self.ai_motion_enabled:
-            return
-        if self.display_manager.is_asleep() or self._is_asleep:
             return
 
         try:
