@@ -30,8 +30,6 @@ class GpioInputManager(threading.Thread):
         self.black_image_path = black_image_path
 
         self.logger = logger
-        self.logger = logging.getLogger(__name__)
-
         self._lock = threading.RLock()
         self._is_asleep = False
 

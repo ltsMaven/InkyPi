@@ -29,7 +29,9 @@ import warnings
 import os
 import logging.config
 logging.config.fileConfig(os.path.join(
-    os.path.dirname(__file__), 'config', 'logging.conf'))
+    os.path.dirname(__file__), 'config', 'logging.conf'),
+    disable_existing_loggers=False
+)
 
 # suppress warning from inky library https://github.com/pimoroni/inky/issues/205
 warnings.filterwarnings("ignore", message=".*Busy Wait: Held high.*")
