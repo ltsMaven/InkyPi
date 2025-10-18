@@ -87,9 +87,11 @@ class GpioInputManager(threading.Thread):
     # --- button handler ------------------------------------------------------
 
     def _press_black(self):
+        logger.info("_Press_Black Active")
         """Always draw local black image (fallback to generated), then sleep (no cache write)."""
         with self._lock:
             try:
+                logger.info("trying with self._lock")
                 self.logger.info(
                     "Button: draw LOCAL black (no cache write) + sleep")
 
