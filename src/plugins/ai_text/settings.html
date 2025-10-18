@@ -3,43 +3,55 @@
 </div>
 
 <script>
+  // Find the existing "Update Now" control that your app renders
+  function findUpdateNowButton() {
+    // try common selectors first
+    const candidates = [
+      '#update-now',
+      'button.update-now',
+      '[data-action="update-now"]',
+      'button[name="update"]',
+      'input[type="submit"].update-now'
+    ];
+    for (const sel of candidates) {
+      const el = document.querySelector(sel);
+      if (el) return el;
+    }
+    // fallback: match by visible text
+    const btns = Array.from(document.querySelectorAll('button, input[type="submit"]'));
+    return btns.find(b => (b.textContent || b.value || '').trim().toLowerCase() === 'update now') || null;
+  }
+
   document.addEventListener('DOMContentLoaded', () => {
-    const btn = document.getElementById('generateBtn');
+    const genBtn = document.getElementById('generateBtn');
 
-    // Try to infer pluginId from the page; if your base template exposes a different
-    // variable, replace pluginId below accordingly.
-    const pluginId = (window.pluginId || (window.pluginSettings && window.pluginSettings.id));
-    // Fallback: derive from URL (/plugins/<pluginId>/settings)
-    const urlParts = location.pathname.split('/').filter(Boolean);
-    const urlPluginId = urlParts.includes('plugins') ? urlParts[urlParts.indexOf('plugins') + 1] : null;
-    const resolvedPluginId = pluginId || urlPluginId;
-
-    btn.addEventListener('click', async () => {
-      btn.disabled = true;
-      const original = btn.textContent;
-      btn.textContent = 'Generating…';
+    genBtn.addEventListener('click', async () => {
+      const original = genBtn.textContent;
+      genBtn.disabled = true;
+      genBtn.textContent = 'Generating…';
 
       try {
-        // Adjust this path to match your manual-update route if different:
-        const res = await fetch(`/plugins/manual-update/${resolvedPluginId}`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            plugin_id: resolvedPluginId,
-            plugin_settings: {},  // you can pass overrides if you want
-          })
-        });
-        if (!res.ok) {
-          const msg = await res.text();
-          throw new Error(msg || 'Request failed');
+        const updateBtn = findUpdateNowButton();
+        if (updateBtn) {
+          // Let the existing form/route do its job
+          updateBtn.click();
+          return;
         }
-        // Optional: reload preview or show a toast
-        location.reload(); // reloads to show the new quote image
+
+        // LAST-RESORT fallback: post the same form programmatically
+        const form = document.querySelector('form[action]');
+        if (form && form.action) {
+          const fd = new FormData(form);
+          const res = await fetch(form.action, { method: form.method || 'POST', body: fd });
+          if (res.ok) location.reload();
+          else throw new Error(await res.text());
+        } else {
+          throw new Error('Could not find the Update Now form on this page.');
+        }
       } catch (err) {
         alert('Failed to generate quote: ' + (err?.message || err));
-      } finally {
-        btn.disabled = false;
-        btn.textContent = original;
+        genBtn.disabled = false;
+        genBtn.textContent = original;
       }
     });
   });
