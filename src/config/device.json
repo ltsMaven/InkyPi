@@ -26,7 +26,8 @@
             "item3": "Pick up groceries",  "done3": false,
             "item4": "30-min workout",     "done4": false,
             "item5": "Read 10 pages",      "done5": false
-          }
+          },
+           "refresh": { "type": "always" } 
         }
       ]
     }
