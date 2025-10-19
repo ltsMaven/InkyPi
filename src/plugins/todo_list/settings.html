@@ -8,8 +8,11 @@
   <div class="form-group nowrap" style="align-items:center; gap:1rem;">
     <label for="item{{i}}" class="form-label">Item {{i}}:</label>
     <input type="text" id="item{{i}}" name="item{{i}}" class="form-input" placeholder="Task {{i}}" style="flex:1;" />
-    <label style="display:flex; align-items:center; gap:.4rem;">
-      <input type="checkbox" id="done{{i}}" name="done{{i}}">
+
+    <!-- Always send a value (unchecked -> false) -->
+    <input type="hidden" name="done{{i}}" value="false">
+    <label style="display:flex; align-items:center; gap:.4rem; margin-left:.5rem;">
+      <input type="checkbox" id="done{{i}}" name="done{{i}}" value="true">
       Completed
     </label>
   </div>
@@ -20,14 +23,11 @@
 document.addEventListener('DOMContentLoaded', () => {
   const ps = window.pluginSettings || {};
   document.getElementById('title').value = ps.title || '';
+  const truthy = v => ['1','true','on','yes','checked'].includes(String(v).toLowerCase());
   for (let i = 1; i <= 5; i++) {
     const it = document.getElementById('item' + i);
     const dn = document.getElementById('done' + i);
     if (it) it.value = ps['item' + i] || '';
-    if (dn) {
-      const v = (ps['done' + i] ?? false);
-      dn.checked = ['1','true','on','yes','checked'].includes(String(v).toLowerCase());
-    }
+    if (dn) dn.checked = truthy(ps['done' + i]);
   }
 });
-</script>
