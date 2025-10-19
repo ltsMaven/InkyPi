@@ -15,15 +15,14 @@
         <span class="text">{{ it }}</span>
       </li>
       {% endfor %}
-    {% else %}
-      <!-- Show faint placeholders if nothing yet -->
-      {% for _ in range(5) %}
-      <li class="todo-item placeholder">
-        <span class="box"></span>
-        <span class="text">Add a task…</span>
-      </li>
-      {% endfor %}
-    {% endif %}
+      {% else %}
+        {% for _ in [1,2,3,4,5] %}
+        <li class="todo-item placeholder">
+          <span class="box"></span>
+          <span class="text">Add a task…</span>
+        </li>
+        {% endfor %}
+      {% endif %}
   </ul>
 </div>
 {% endblock %}
