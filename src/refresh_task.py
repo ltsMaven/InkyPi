@@ -22,6 +22,11 @@ class RefreshTask:
 
         self.thread = None
         self.lock = threading.Lock()
+
+        # track current playlist + index (persist via device_config if you prefer)
+        self._current_playlist = self.device_config.get_config("active_playlist", "Default")
+        self._playlist_index = int(self.device_config.get_config("active_playlist_index", 0))
+
         self.condition = threading.Condition(self.lock)
         self.running = False
         self.manual_update_request = ()
@@ -46,6 +51,59 @@ class RefreshTask:
         if self.thread:
             logger.info("Stopping refresh task")
             self.thread.join()
+
+    # OPTIONAL: call when UI changes playlist
+    def set_active_playlist(self, name: str):
+        with self._lock:
+            self._current_playlist = name
+            self._playlist_index = 0
+            self.device_config.update_value("active_playlist", name, write=True)
+            self.device_config.update_value("active_playlist_index", 0, write=True)
+
+    def _get_playlist_items(self, name: str):
+        """
+        Expect a list of items like:
+        [{"plugin_id":"image","plugin_settings":{...}}, ...]
+        Adapt this if your config layout differs:
+        """
+        try:
+            playlists = self.device_config.get_config("playlists", {})
+            group = playlists.get(name) or playlists.get("Default") or []
+            # If your structure is {"Default": {"items":[...]}} adjust:
+            if isinstance(group, dict) and "items" in group:
+                return group["items"]
+            return group
+        except Exception:
+            return []
+
+    def next_playlist_item(self):
+        """
+        Advance to next item (wrap to 0) and display it.
+        """
+        from refresh_task import ManualRefresh  # local import to avoid cycles
+
+        with self._lock:
+            items = self._get_playlist_items(self._current_playlist)
+            if not items:
+                # nothing to do
+                return
+
+            # compute next index with wrap-around
+            self._playlist_index = (self._playlist_index + 1) % len(items)
+            item = items[self._playlist_index]
+            plugin_id = item.get("plugin_id")
+            plugin_settings = item.get("plugin_settings", {})
+
+            # persist pointer if you want it to survive restarts
+            try:
+                self.device_config.update_value("active_playlist", self._current_playlist, write=True)
+                self.device_config.update_value("active_playlist_index", self._playlist_index, write=True)
+            except Exception:
+                pass
+
+        # trigger normal render path on the main worker
+        action = ManualRefresh(plugin_id=plugin_id, plugin_settings=plugin_settings)
+        self.manual_update(action)
 
     def _run(self):
         """Background task that manages the periodic refresh of the display.

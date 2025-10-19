@@ -186,25 +186,41 @@ class GpioInputManager(threading.Thread):
         except Exception:
             current_plugin_id = None
 
-        if current_plugin_id != "ai_text":
-            return
-
-        now = time.time()
-        if (now - self._last_motion_ts) < self.motion_cooldown:
-            return
-
-        with self._lock:
+        if current_plugin_id == "ai_text":
             now = time.time()
             if (now - self._last_motion_ts) < self.motion_cooldown:
                 return
-            self._last_motion_ts = now
 
-        self.logger.info("PIR: AI Text on-screen → generating a new quote")
-        try:
-            action = ManualRefresh(plugin_id="ai_text", plugin_settings={})
-            self.refresh_task.manual_update(action)
-        except Exception as e:
-            self.logger.exception("PIR-triggered quote refresh failed: %s", e)
+            with self._lock:
+                now = time.time()
+                if (now - self._last_motion_ts) < self.motion_cooldown:
+                    return
+                self._last_motion_ts = now
+
+            self.logger.info("PIR: AI Text on-screen → generating a new quote")
+            try:
+                action = ManualRefresh(plugin_id="ai_text", plugin_settings={})
+                self.refresh_task.manual_update(action)
+            except Exception as e:
+                self.logger.exception("PIR-triggered quote refresh failed: %s", e)
+
+        else:
+            # cooldown handling (keeps your existing throttling)
+            now = time.time()
+            if (now - self._last_motion_ts) < self.motion_cooldown:
+                return
+            with self._lock:
+                now = time.time()
+                if (now - self._last_motion_ts) < self.motion_cooldown:
+                    return
+                self._last_motion_ts = now
+
+            # >>> ADVANCE PLAYLIST HERE <<<
+            try:
+                self.logger.info("PIR: advancing to next playlist item")
+                self.refresh_task.next_playlist_item()
+            except Exception as e:
+                self.logger.exception("PIR 'next playlist' failed: %s", e)
 
     # --- thread loop ---------------------------------------------------------
 
