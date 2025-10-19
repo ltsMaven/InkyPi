@@ -205,33 +205,33 @@ class GpioInputManager(threading.Thread):
             except Exception as e:
                 self.logger.exception("PIR-triggered quote refresh failed: %s", e)
 
-        else:
-            # cooldown handling (keeps your existing throttling)
-            now = time.time()
-            if (now - self._last_motion_ts) < self.motion_cooldown:
-                return
-            with self._lock:
-                now = time.time()
-                if (now - self._last_motion_ts) < self.motion_cooldown:
-                    return
-                self._last_motion_ts = now
+        # else:
+        #     # cooldown handling (keeps your existing throttling)
+        #     now = time.time()
+        #     if (now - self._last_motion_ts) < self.motion_cooldown:
+        #         return
+        #     with self._lock:
+        #         now = time.time()
+        #         if (now - self._last_motion_ts) < self.motion_cooldown:
+        #             return
+        #         self._last_motion_ts = now
 
-            # >>> ADVANCE PLAYLIST HERE <<<
-            try:
-                # 1) make "Images" the active playlist (persist for UI/next boot)
-                pm = self.device_config.get_playlist_manager()
-                if hasattr(pm, "set_active_playlist"):
-                    pm.set_active_playlist("Images")
-                # also persist in config if your UI reads it from there:
-                try:
-                    self.device_config.update_value("playlist_config.active_playlist", "Images", write=True)
-                except Exception:
-                    pass
+        #     # >>> ADVANCE PLAYLIST HERE <<<
+        #     try:
+        #         # 1) make "Images" the active playlist (persist for UI/next boot)
+        #         pm = self.device_config.get_playlist_manager()
+        #         if hasattr(pm, "set_active_playlist"):
+        #             pm.set_active_playlist("Images")
+        #         # also persist in config if your UI reads it from there:
+        #         try:
+        #             self.device_config.update_value("playlist_config.active_playlist", "Images", write=True)
+        #         except Exception:
+        #             pass
 
-                self.logger.info("PIR: advancing to next playlist item")
-                self.refresh_task.next_playlist_item()
-            except Exception as e:
-                self.logger.exception("PIR 'next playlist' failed: %s", e)
+        #         self.logger.info("PIR: advancing to next playlist item")
+        #         self.refresh_task.next_playlist_item()
+        #     except Exception as e:
+        #         self.logger.exception("PIR 'next playlist' failed: %s", e)
         
         return
 
