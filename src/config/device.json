@@ -19,13 +19,13 @@
         {
           "plugin_id": "todo_list",
           "name": "To-Do",
-          "settings": {
+          "plugin_settings": {
             "title": "Today",
-            "item1": "Water the plants", "done1": "false",
-            "item2": "Email project update", "done2": "true",
-            "item3": "Pick up groceries",  "done3": "false",
-            "item4": "30-min workout",     "done4": "false",
-            "item5": "Read 10 pages",      "done5": "false"
+            "item1": "Water the plants", "done1": false,
+            "item2": "Email project update", "done2": true,
+            "item3": "Pick up groceries",  "done3": false,
+            "item4": "30-min workout",     "done4": false,
+            "item5": "Read 10 pages",      "done5": false
           }
         }
       ]
