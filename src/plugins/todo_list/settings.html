@@ -5,11 +5,12 @@
   </div>
 
   {% for i in [1,2,3,4,5] %}
-  <div class="form-group nowrap">
+  <div class="form-group nowrap" style="align-items:center; gap:1rem;">
     <label for="item{{i}}" class="form-label">Item {{i}}:</label>
-    <input type="text" id="item{{i}}" name="item{{i}}" class="form-input" placeholder="Task {{i}}" />
-    <label style="margin-left:.5rem;">
-      <input type="checkbox" id="done{{i}}" name="done{{i}}"> Completed
+    <input type="text" id="item{{i}}" name="item{{i}}" class="form-input" placeholder="Task {{i}}" style="flex:1;" />
+    <label style="display:flex; align-items:center; gap:.4rem;">
+      <input type="checkbox" id="done{{i}}" name="done{{i}}">
+      Completed
     </label>
   </div>
   {% endfor %}
@@ -19,11 +20,14 @@
 document.addEventListener('DOMContentLoaded', () => {
   const ps = window.pluginSettings || {};
   document.getElementById('title').value = ps.title || '';
-  for (let i=1;i<=5;i++){
-    const it = document.getElementById('item'+i);
-    const dn = document.getElementById('done'+i);
-    if (it) it.value = ps['item'+i] || '';
-    if (dn) dn.checked = !!ps['done'+i];
+  for (let i = 1; i <= 5; i++) {
+    const it = document.getElementById('item' + i);
+    const dn = document.getElementById('done' + i);
+    if (it) it.value = ps['item' + i] || '';
+    if (dn) {
+      const v = (ps['done' + i] ?? false);
+      dn.checked = ['1','true','on','yes','checked'].includes(String(v).toLowerCase());
+    }
   }
 });
 </script>

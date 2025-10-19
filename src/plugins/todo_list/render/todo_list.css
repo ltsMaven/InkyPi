@@ -1,10 +1,9 @@
-/* plugins/todo_list/todo_list.css */
-.todo-list { list-style: none; padding: 0; margin: 0; }
-.todo-item { display:flex; align-items:center; gap:.6rem; margin:.25rem 0; }
-.todo-item .box {
-  display:inline-block; width:1.2em; height:1.2em;
-  border:2px solid currentColor; text-align:center; line-height:1.05em;
-  font-weight:700; font-family: system-ui, sans-serif;
-}
-.todo-item .text { max-width: 100%; }
-.todo-item.done .text { text-decoration: line-through; opacity:.55; }
+.todo-wrap { height:100%; width:100%; padding:4cqh 5cqi; font-family:"Jost"; display:flex; flex-direction:column; gap:2cqh; }
+.todo-head { display:flex; justify-content:space-between; align-items:end; }
+.todo-title { font-weight:700; font-size:min(12cqh,10cqi); }
+.todo-date { opacity:.6; font-size:min(5cqh,4.2cqi); }
+.todo-list { list-style:none; padding:0; margin:1cqh 0 0; display:flex; flex-direction:column; gap:1.2cqh; }
+.todo-item { display:flex; gap:1cqi; align-items:center; font-size:min(7cqh,5.5cqi); }
+.todo-item .box { display:inline-flex; justify-content:center; align-items:center; width:1.2em; height:1.2em; border:.12em solid currentColor; border-radius:.18em; line-height:1; font-weight:700; }
+.todo-item.done .text { text-decoration:line-through; opacity:.55; }
+.todo-item.placeholder { opacity:.35; }
