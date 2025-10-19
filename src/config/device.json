@@ -18,7 +18,7 @@
           "name": "To-Do",
           "settings": {
             "title": "Today",
-            "item1": "Water the plants", "done1": "false",
+            "item1": "Water the plants", "done1": "true",
             "item2": "Email project update", "done2": "true",
             "item3": "Pick up groceries",  "done3": "false",
             "item4": "30-min workout",     "done4": "false",
