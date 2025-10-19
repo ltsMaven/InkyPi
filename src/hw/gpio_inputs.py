@@ -204,7 +204,7 @@ class GpioInputManager(threading.Thread):
             except Exception as e:
                 self.logger.exception("PIR-triggered quote refresh failed: %s", e)
 
-        else:
+        elif current_plugin_id == "image_upload":
             # cooldown handling (keeps your existing throttling)
             now = time.time()
             if (now - self._last_motion_ts) < self.motion_cooldown:
