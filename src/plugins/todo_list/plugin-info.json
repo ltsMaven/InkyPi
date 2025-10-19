@@ -1,0 +1,11 @@
+{
+  "id": "todo_list",
+  "name": "To-Do List",
+  "class": "TodoList",
+  "disabled": false,
+  "description": "Simple 5-item to-do list",
+  "settings": {
+    "title": "To-Do",
+    "items": ["", "", "", "", ""]
+  }
+}

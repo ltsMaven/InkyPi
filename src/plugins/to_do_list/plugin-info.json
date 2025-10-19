@@ -1,7 +1,0 @@
-{
-  "id": "todo_list",
-  "name": "To-Do List",
-  "module": "todo_list.todo_list",
-  "class": "TodoList",
-  "version": "1.0.0"
-}
