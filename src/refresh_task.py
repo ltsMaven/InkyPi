@@ -23,10 +23,6 @@ class RefreshTask:
         self.thread = None
         self.lock = threading.Lock()
 
-        # track current playlist + index (persist via device_config if you prefer)
-        self._current_playlist = self.device_config.get_config("active_playlist", "Default")
-        self._playlist_index = int(self.device_config.get_config("active_playlist_index", 0))
-
         self.condition = threading.Condition(self.lock)
         self.running = False
         self.manual_update_request = ()
@@ -52,57 +48,27 @@ class RefreshTask:
             logger.info("Stopping refresh task")
             self.thread.join()
 
-    # OPTIONAL: call when UI changes playlist
-    def set_active_playlist(self, name: str):
-        with self.lock:
-            self._current_playlist = name
-            self._playlist_index = 0
-            self.device_config.update_value("active_playlist", name, write=True)
-            self.device_config.update_value("active_playlist_index", 0, write=True)
-
-    def _get_playlist_items(self, name: str):
-        """
-        Expect a list of items like:
-        [{"plugin_id":"image","plugin_settings":{...}}, ...]
-        Adapt this if your config layout differs:
-        """
-        try:
-            playlists = self.device_config.get_config("playlists", {})
-            group = playlists.get(name) or playlists.get("Default") or []
-            # If your structure is {"Default": {"items":[...]}} adjust:
-            if isinstance(group, dict) and "items" in group:
-                return group["items"]
-            return group
-        except Exception:
-            return []
-
     def next_playlist_item(self):
-        """
-        Advance to next item (wrap to 0) and display it.
-        """
-        from refresh_task import ManualRefresh  # local import to avoid cycles
+        """Advance to the next plugin in the active playlist (wraps automatically)."""
+        from refresh_task import PlaylistRefresh  # avoid circular import at module load
 
         with self.lock:
-            items = self._get_playlist_items(self._current_playlist)
-            if not items:
-                # nothing to do
+            playlist_manager = self.device_config.get_playlist_manager()
+            current_dt = self._get_current_datetime()
+            playlist = playlist_manager.determine_active_playlist(current_dt)
+            if not playlist or not getattr(playlist, "plugins", None):
+                logger.info("No active playlist or no plugins; nothing to advance.")
                 return
 
-            # compute next index with wrap-around
-            self._playlist_index = (self._playlist_index + 1) % len(items)
-            item = items[self._playlist_index]
-            plugin_id = item.get("plugin_id")
-            plugin_settings = item.get("plugin_settings", {})
+            # This should wrap internally according to your Playlist model
+            plugin_instance = playlist.get_next_plugin()
+            if not plugin_instance:
+                logger.info("Playlist has no next plugin; nothing to advance.")
+                return
 
-            # persist pointer if you want it to survive restarts
-            try:
-                self.device_config.update_value("active_playlist", self._current_playlist, write=True)
-                self.device_config.update_value("active_playlist_index", self._playlist_index, write=True)
-            except Exception:
-                pass
+            action = PlaylistRefresh(playlist, plugin_instance, force=True)
 
-        # trigger normal render path on the main worker
-        action = ManualRefresh(plugin_id=plugin_id, plugin_settings=plugin_settings)
+        # Tell the worker thread to render now
         self.manual_update(action)
 
     def _run(self):
@@ -222,7 +188,7 @@ class RefreshTask:
             if self.refresh_result.get("exception"):
                 raise self.refresh_result.get("exception")
         else:
-            logger.warn(
+            logger.warning(
                 "Background refresh task is not running, unable to do a manual update")
 
     def signal_config_change(self):
