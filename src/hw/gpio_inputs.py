@@ -205,7 +205,7 @@ class GpioInputManager(threading.Thread):
             except Exception as e:
                 self.logger.exception("PIR-triggered quote refresh failed: %s", e)
 
-        elif current_plugin_id == "image_upload":
+        else:
             # cooldown handling (keeps your existing throttling)
             now = time.time()
             if (now - self._last_motion_ts) < self.motion_cooldown:
@@ -232,9 +232,6 @@ class GpioInputManager(threading.Thread):
                 self.refresh_task.next_playlist_item()
             except Exception as e:
                 self.logger.exception("PIR 'next playlist' failed: %s", e)
-
-        else:
-            return
 
     # --- thread loop ---------------------------------------------------------
 
