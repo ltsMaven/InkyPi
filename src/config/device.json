@@ -8,17 +8,20 @@
     "ai_quote_on_motion": true,
     "pir_quote_cooldown_seconds": 20,
 
-    "playlist_config": {
-    "playlists": [
+"playlist_config": {
+  "playlists": [
     {
       "name": "Default",
+      "start_time": "00:00",
+      "end_time": "23:59",
+      "days": ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"],
       "plugins": [
         {
           "plugin_id": "todo_list",
           "name": "To-Do",
           "settings": {
             "title": "Today",
-            "item1": "Water the plants", "done1": "true",
+            "item1": "Water the plants", "done1": "false",
             "item2": "Email project update", "done2": "true",
             "item3": "Pick up groceries",  "done3": "false",
             "item4": "30-min workout",     "done4": "false",
@@ -28,8 +31,8 @@
       ]
     }
   ],
-    "active_playlist": "Default"
-  },
+  "active_playlist": "Default"
+},
   "refresh_info": {
     "refresh_time": null,
     "image_hash": "",
