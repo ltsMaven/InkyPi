@@ -27,7 +27,7 @@ import os
 import warnings
 import os
 import logging.config
-from plugins.plugin_registry import load_plugins, registered_plugins
+from plugins.plugin_registry import load_plugins
 logging.config.fileConfig(os.path.join(
     os.path.dirname(__file__), 'config', 'logging.conf'),
     disable_existing_loggers=False
@@ -77,7 +77,9 @@ logger.info("DisplayManager methods: %s",
 refresh_task = RefreshTask(device_config, display_manager)
 
 load_plugins(device_config.get_plugins())
-logger.info("Loaded plugins: %s", list(registered_plugins.keys()))
+
+logger.info("Loaded plugins from config: %s",
+            [p.get('id') for p in device_config.get_plugins()])
 
 # Store dependencies
 app.config['DEVICE_CONFIG'] = device_config
