@@ -4,39 +4,26 @@
     <input type="text" id="title" name="title" placeholder="To-Do" class="form-input" />
   </div>
 
+  {% for i in [1,2,3,4,5] %}
   <div class="form-group nowrap">
-    <label for="item1" class="form-label">Item 1:</label>
-    <input type="text" id="item1" name="item1" placeholder="e.g. Water the plants" class="form-input" />
+    <label for="item{{i}}" class="form-label">Item {{i}}:</label>
+    <input type="text" id="item{{i}}" name="item{{i}}" class="form-input" placeholder="Task {{i}}" />
+    <label style="margin-left:.5rem;">
+      <input type="checkbox" id="done{{i}}" name="done{{i}}"> Completed
+    </label>
   </div>
-  <div class="form-group nowrap">
-    <label for="item2" class="form-label">Item 2:</label>
-    <input type="text" id="item2" name="item2" placeholder="e.g. Email project update" class="form-input" />
-  </div>
-  <div class="form-group nowrap">
-    <label for="item3" class="form-label">Item 3:</label>
-    <input type="text" id="item3" name="item3" placeholder="e.g. Pick up groceries" class="form-input" />
-  </div>
-  <div class="form-group nowrap">
-    <label for="item4" class="form-label">Item 4:</label>
-    <input type="text" id="item4" name="item4" placeholder="e.g. 30-min workout" class="form-input" />
-  </div>
-  <div class="form-group nowrap">
-    <label for="item5" class="form-label">Item 5:</label>
-    <input type="text" id="item5" name="item5" placeholder="e.g. Read 10 pages" class="form-input" />
-  </div>
+  {% endfor %}
 </div>
 
 <script>
-  // Populate form values from saved plugin settings
-  document.addEventListener('DOMContentLoaded', () => {
-    if (typeof loadPluginSettings !== 'undefined' && loadPluginSettings && window.pluginSettings) {
-      const ps = window.pluginSettings || {};
-      document.getElementById('title').value = ps.title || '';
-
-      for (let i = 1; i <= 5; i++) {
-        const el = document.getElementById('item' + i);
-        if (el) el.value = ps['item' + i] || '';
-      }
-    }
-  });
+document.addEventListener('DOMContentLoaded', () => {
+  const ps = window.pluginSettings || {};
+  document.getElementById('title').value = ps.title || '';
+  for (let i=1;i<=5;i++){
+    const it = document.getElementById('item'+i);
+    const dn = document.getElementById('done'+i);
+    if (it) it.value = ps['item'+i] || '';
+    if (dn) dn.checked = !!ps['done'+i];
+  }
+});
 </script>

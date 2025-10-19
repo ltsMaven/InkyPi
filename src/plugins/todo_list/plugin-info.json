@@ -1,11 +1,8 @@
 {
   "id": "todo_list",
   "name": "To-Do List",
-  "class": "TodoList",
-  "disabled": false,
-  "description": "Simple 5-item to-do list",
-  "settings": {
-    "title": "To-Do",
-    "items": ["", "", "", "", ""]
-  }
+  "class": "ToDoList",
+  "version": "1.0.0",
+  "description": "Simple checklist with up to 5 items.",
+  "image_settings": {}
 }

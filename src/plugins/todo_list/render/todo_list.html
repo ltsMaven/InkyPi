@@ -10,19 +10,19 @@
   <ul class="todo-list">
     {% if items and items|length > 0 %}
       {% for it in items %}
-      <li class="todo-item">
-        <span class="box"></span>
-        <span class="text">{{ it }}</span>
+      <li class="todo-item {{ 'done' if it.done }}">
+        <span class="box">{{ '✓' if it.done else '' }}</span>
+        <span class="text">{{ it.text }}</span>
       </li>
       {% endfor %}
-      {% else %}
-        {% for _ in [1,2,3,4,5] %}
-        <li class="todo-item placeholder">
-          <span class="box"></span>
-          <span class="text">Add a task…</span>
-        </li>
-        {% endfor %}
-      {% endif %}
+    {% else %}
+      {% for _ in [1,2,3,4,5] %}
+      <li class="todo-item placeholder">
+        <span class="box"></span>
+        <span class="text">Add a task…</span>
+      </li>
+      {% endfor %}
+    {% endif %}
   </ul>
 </div>
 {% endblock %}

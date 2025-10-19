@@ -1,63 +1,10 @@
-.todo-wrap {
-  height: 100%;
-  width: 100%;
-  padding: 4cqh 5cqi;
-  display: flex;
-  flex-direction: column;
-  justify-content: flex-start;
-  gap: 3cqh;
-  font-family: "Jost", system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
-  container-type: size;
-}
-
-.todo-head {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 2cqi;
-}
-
-.todo-title {
-  font-weight: 700;
-  font-size: min(12cqh, 10cqi);
-  letter-spacing: 0.02em;
-}
-
-.todo-date {
-  opacity: 0.6;
-  font-size: min(6cqh, 5cqi);
-}
-
-.todo-list {
-  list-style: none;
-  padding: 0;
-  margin: 0;
-  display: grid;
-  gap: 2cqh;
-}
-
-.todo-item {
-  display: grid;
-  grid-template-columns: auto 1fr;
-  align-items: center;
-  gap: 2cqi;
-  font-size: min(8cqh, 7cqi);
-}
-
+/* plugins/todo_list/todo_list.css */
+.todo-list { list-style: none; padding: 0; margin: 0; }
+.todo-item { display:flex; align-items:center; gap:.6rem; margin:.25rem 0; }
 .todo-item .box {
-  width: 1em;
-  height: 1em;
-  border: 0.12em solid currentColor;
-  border-radius: 0.2em;
-  display: inline-block;
+  display:inline-block; width:1.2em; height:1.2em;
+  border:2px solid currentColor; text-align:center; line-height:1.05em;
+  font-weight:700; font-family: system-ui, sans-serif;
 }
-
-.todo-item .text {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.todo-item.placeholder {
-  opacity: 0.35;
-}
+.todo-item .text { max-width: 100%; }
+.todo-item.done .text { text-decoration: line-through; opacity:.55; }
