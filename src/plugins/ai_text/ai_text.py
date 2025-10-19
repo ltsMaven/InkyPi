@@ -65,16 +65,15 @@ class AIText(BasePlugin):
         The quote should be on themes like technology, learning, creativity, curiosity, or perseverance.
         No extra lines, no quotation marks.
         """
-        system = (
-            "You are a quotes generator. Produce ONE well-known, verifiable quote by a human author "
-            "(not an AI). Topic should relate to technology, learning, creativity, curiosity, or perseverance. "
-            "Constraints for the quote text (excluding author): 10–24 words. "
-            "OUTPUT FORMAT EXACTLY:\n"
-            "<quote text>\\n— <author full name>\n"
-            "Do NOT add quotation marks, source links, years, or any extra text. "
-            "Do NOT invent; if you are not certain of exact wording, respond with SKIP. "
-            f"Today is {datetime.today().strftime('%Y-%m-%d')}."
-        )
+        system = f"""You are a quotes generator. Produce ONE well-known, verifiable quote by a human author (not an AI).
+    Topic should relate to technology, learning, creativity, curiosity, or perseverance.
+    Constraints for the quote text (excluding author): 10–24 words.
+    OUTPUT FORMAT: two lines only.
+    Line 1: <quote text>
+    Line 2: — <author full name>
+    Do NOT add quotation marks, source links, years, or any extra text.
+    Do NOT invent; if you are not certain of exact wording, respond with SKIP.
+    Today is {datetime.today().strftime('%Y-%m-%d')}."""
         user = "Return one quote now."
 
         # Up to 3 attempts in case the model replies SKIP or misformats
