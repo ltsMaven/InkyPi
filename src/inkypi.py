@@ -28,6 +28,7 @@ import os
 import warnings
 import os
 import logging.config
+from plugins.plugin_registry import load_plugins, registered_plugins
 logging.config.fileConfig(os.path.join(
     os.path.dirname(__file__), 'config', 'logging.conf'),
     disable_existing_loggers=False
@@ -77,6 +78,7 @@ logger.info("DisplayManager methods: %s",
 refresh_task = RefreshTask(device_config, display_manager)
 
 load_plugins(device_config.get_plugins())
+logger.info("Loaded plugins: %s", list(registered_plugins.keys()))
 
 # Store dependencies
 app.config['DEVICE_CONFIG'] = device_config
@@ -93,6 +95,7 @@ BLACK_IMAGE_PATH = os.path.join(
     os.path.dirname(__file__), "static", "images", "black.png"
 )
 
+
 def ensure_black_image(path, size):
     from PIL import Image
     os.makedirs(os.path.dirname(path), exist_ok=True)
@@ -106,6 +109,7 @@ def ensure_black_image(path, size):
                     Image.new("RGB", size, "black").save(path)
     except Exception:
         Image.new("RGB", size, "black").save(path)
+
 
 # Make sure we have a correctly sized black image for this panel
 panel_wh = device_config.get_resolution()
