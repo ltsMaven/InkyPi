@@ -232,6 +232,8 @@ class GpioInputManager(threading.Thread):
                 self.refresh_task.next_playlist_item()
             except Exception as e:
                 self.logger.exception("PIR 'next playlist' failed: %s", e)
+        
+        return
 
     # --- thread loop ---------------------------------------------------------
 
