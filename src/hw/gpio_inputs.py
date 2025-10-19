@@ -222,6 +222,9 @@ class GpioInputManager(threading.Thread):
             except Exception as e:
                 self.logger.exception("PIR 'next playlist' failed: %s", e)
 
+        else:
+            return
+
     # --- thread loop ---------------------------------------------------------
 
     def run(self):
