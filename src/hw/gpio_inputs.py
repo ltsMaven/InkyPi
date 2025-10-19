@@ -46,7 +46,8 @@ class GpioInputManager(threading.Thread):
         self.button.when_pressed = self._press_black  # release ignored
 
         # PIR (enable only if configured)
-        self.pir = MotionSensor(16, queue_len=2, sample_rate=5, threshold=0.6)
+        # self.pir = MotionSensor(16, queue_len=2, sample_rate=5, threshold=0.6)
+        self.pir = None
         if self.ai_motion_enabled:
             global _SHARED_PIR
             if _SHARED_PIR is None:
