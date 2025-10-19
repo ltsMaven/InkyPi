@@ -3,7 +3,6 @@
 # set up logging
 from hw.gpio_inputs import GpioInputManager
 from waitress import serve
-from plugins.plugin_registry import load_plugins
 from jinja2 import ChoiceLoader, FileSystemLoader
 from blueprints.playlist import playlist_bp
 from blueprints.plugin import plugin_bp
