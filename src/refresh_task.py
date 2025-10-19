@@ -54,7 +54,7 @@ class RefreshTask:
 
     # OPTIONAL: call when UI changes playlist
     def set_active_playlist(self, name: str):
-        with self._lock:
+        with self.lock:
             self._current_playlist = name
             self._playlist_index = 0
             self.device_config.update_value("active_playlist", name, write=True)
@@ -82,7 +82,7 @@ class RefreshTask:
         """
         from refresh_task import ManualRefresh  # local import to avoid cycles
 
-        with self._lock:
+        with self.lock:
             items = self._get_playlist_items(self._current_playlist)
             if not items:
                 # nothing to do
