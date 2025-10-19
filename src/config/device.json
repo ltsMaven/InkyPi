@@ -9,8 +9,26 @@
     "pir_quote_cooldown_seconds": 20,
 
     "playlist_config": {
-    "playlists": [],
-    "active_playlist": null
+    "playlists": [
+    {
+      "name": "Default",
+      "plugins": [
+        {
+          "plugin_id": "todo_list",
+          "name": "To-Do",
+          "settings": {
+            "title": "Today",
+            "item1": "Water the plants", "done1": "false",
+            "item2": "Email project update", "done2": "true",
+            "item3": "Pick up groceries",  "done3": "false",
+            "item4": "30-min workout",     "done4": "false",
+            "item5": "Read 10 pages",      "done5": "false"
+          }
+        }
+      ]
+    }
+  ],
+    "active_playlist": "Default"
   },
   "refresh_info": {
     "refresh_time": null,
